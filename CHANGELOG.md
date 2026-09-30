@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.1.1 - 2026-09-30
+
+### Signing and automation
+
+- Add the dedicated Ed25519 release public key and a repository Actions signing secret.
+- Build only committed Git source; sign the catalog, component manifests, complete release file list and archive digest.
+- Add public-key verification tools and tests for altered payloads, wrong keys, signature purpose substitution, unsafe paths and modified release files.
+- Add secret-free pull request checks, manual signed artifacts, and version-tag-triggered GitHub Releases.
+- Document key backup, GitHub Secret setup, exact signature bytes and consumer verification. No anti-rollback or expiration policy is implemented.
+- Runtime loaders remain at 0.1.0 and do not yet enforce signature verification; this patch covers publishing tools, not device security acceptance.
+
 ## 0.1.0 - 2026-09-30
 
 ### Framework

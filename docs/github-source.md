@@ -22,6 +22,8 @@ catalog/components/<id>/<version>/<入口与资源>
 
 SHA-256 用于检查下载与清单一致；来源信任由所配置的仓库和 ref 决定。包目录按版本固定，已发布版本不可原地修改。后续若使用 GitHub Release assets，需增加对应 source 实现，当前源读取仓库内的普通文件。
 
+0.1.1 增加已签名的 GitHub Actions / Release 分发包，详见 [签名发布指南](signing.md)。签名在打包阶段生成，不改写源码仓库 catalog；本页描述的 raw-file loader 尚未消费签名，也不会因为配置了仓库 Secret 而自动获得验签能力。
+
 ## 新增组件
 
 1. 使用安全 ID（小写字母、数字、连字符）和独立版本建立目录。

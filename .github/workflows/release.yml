@@ -1,0 +1,81 @@
+name: Signed component release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: signed-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    # Forks configure their own workflow and key; the official signer only runs here.
+    if: github.repository == 'Magniswan/falcon-components' && (github.event_name == 'push' || github.ref == 'refs/heads/main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    outputs:
+      version: ${{ steps.sign.outputs.version }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Require a committed release from main
+        run: git merge-base --is-ancestor HEAD origin/main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 18.20.8
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: npm run check
+      - name: Build and sign committed source
+        id: sign
+        env:
+          FALCON_COMPONENTS_SIGNING_PRIVATE_KEY: ${{ secrets.FALCON_COMPONENTS_SIGNING_PRIVATE_KEY }}
+        run: node scripts/build-release.mjs
+      - name: Verify with the public key from this host checkout
+        env:
+          RELEASE_DIRECTORY: ${{ steps.sign.outputs.directory }}
+        run: |
+          node scripts/verify-archive.mjs "$RELEASE_DIRECTORY/${{ steps.sign.outputs.archive }}"
+          node scripts/verify-release.mjs "$RELEASE_DIRECTORY/bundle"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: signed-release
+          if-no-files-found: error
+          path: |
+            ${{ steps.sign.outputs.directory }}/falcon-components-*.tar.gz
+            ${{ steps.sign.outputs.directory }}/falcon-components-*.tar.gz.sig.json
+            ${{ steps.sign.outputs.directory }}/SHA256SUMS
+          retention-days: 30
+
+  publish:
+    if: github.event_name == 'push'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      # Use GitHub's runner CLI and token; this job has no signing private key.
+      - name: Publish the verified artifact for the pushed version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ needs.build.outputs.version }}
+          RELEASE_RUN_ID: ${{ github.run_id }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$RELEASE_TAG" = "v$RELEASE_VERSION"
+          gh run download "$RELEASE_RUN_ID" --repo "$GH_REPO" --name signed-release --dir release
+          printf 'Signed Falcon component framework %s.\n\nSource commit: %s\n\nSee docs/signing.md for public-key verification. Falcon device-side signature verification remains an integration requirement.\n' "$RELEASE_VERSION" "$RELEASE_COMMIT" > release-notes.md
+          gh release create "$RELEASE_TAG" --repo "$GH_REPO" --verify-tag --title "$RELEASE_TAG" --notes-file release-notes.md release/*

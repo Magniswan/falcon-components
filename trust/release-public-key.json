@@ -1,0 +1,6 @@
+{
+  "schemaVersion": 1,
+  "algorithm": "Ed25519",
+  "keyId": "c3973877c8490a7faa03d99dd6bf70367b00d767bc88ef5fc6f9d7f4ca252955",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEABUY0OuhjAcvfF7op7WiOvu6mWGc1V6HvsP32qnh1e8k=\n-----END PUBLIC KEY-----\n"
+}

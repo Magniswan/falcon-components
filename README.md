@@ -2,7 +2,7 @@
 
 面向 Falcon/Vue 词典笔应用的开源组件框架。先提供共享组件管理和 GitHub 更新源，后续可增加键盘、日历、图表等独立组件。
 
-**0.1.0：通用管理器、GitHub 更新源、前台下载确认与参考示例已实现。键盘未实现；Falcon 设备的文件、锁、网络和包外加载仍需宿主适配及真机验证。**
+**0.1.1：通用管理器、GitHub 更新源、前台下载确认与参考示例已实现，增加 GitHub Actions 私钥签名打包工作流。宿主加载器的强制验签尚未接入；键盘未实现，Falcon 设备适配仍需真机验证。**
 
 ## 目标
 
@@ -42,6 +42,12 @@ test/                   行为测试
 应用指定组件 ID 和精确版本 → 检查本地 → 缺失时前台提示“下载 / 取消” → 确认后连接 GitHub → 校验并原子安装 → 加载组件。失败可重试，取消不加载晚到结果。已有完整版本直接离线使用。
 
 框架入口与提示随应用构建，远程组件按需安装。参见 [快速接入](docs/getting-started.md)、[API](docs/api.md) 和 [示例](examples/README.md)。键盘仅保留 [设计文档](packages/keyboard/README.md)。
+
+## 自动签名发布
+
+私钥配置在仓库 Actions Secret `FALCON_COMPONENTS_SIGNING_PRIVATE_KEY`，可信公钥见 [公钥文件](trust/release-public-key.json)。Actions 手动运行生成已签名测试产物；推送与根 package.json 版本一致的 `vX.Y.Z` 标签后，自动测试、打包、签名并创建 GitHub Release。
+
+组件清单、目录和完整源码包分别签名，校验使用宿主预先固定的公钥。按项目决定不做防回滚、过期检查或最高版本记录。发布、校验命令及密钥保管详见 [签名发布指南](docs/signing.md)。当前 loader 仍使用普通 raw-file 清单，签名产物的设备接入是后续工作。
 
 ## 设备公共目录
 
