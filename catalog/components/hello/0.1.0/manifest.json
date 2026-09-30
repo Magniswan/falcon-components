@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "id": "hello",
+  "version": "0.1.0",
+  "name": "Hello 示例组件",
+  "runtime": {
+    "format": "esm",
+    "apiVersion": 1
+  },
+  "entry": "hello.mjs",
+  "files": [
+    {
+      "path": "hello.mjs",
+      "size": 377,
+      "sha256": "810a356a9d91ad5abcf57ae78d829b41464eacf9bbff3a45067a5de03d48a694"
+    }
+  ]
+}

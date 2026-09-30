@@ -1,10 +1,17 @@
 {
   "name": "falcon-components",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "description": "Reusable components for Falcon/Vue dictionary-pen applications",
   "license": "MIT",
   "engines": { "node": ">=18 <19" },
   "workspaces": ["packages/*"],
-  "scripts": { "check": "node scripts/check-repository.mjs" }
+  "scripts": {
+    "check": "node scripts/check-repository.mjs",
+    "test": "node --test",
+    "demo": "node examples/node-host/main.mjs",
+    "catalog:check": "node scripts/check-catalog.mjs",
+    "check:falcon": "node scripts/check-falcon-build.mjs"
+  }
 }

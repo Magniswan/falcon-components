@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "components": [
+    {
+      "id": "hello",
+      "version": "0.1.0",
+      "manifest": "catalog/components/hello/0.1.0/manifest.json"
+    }
+  ]
+}

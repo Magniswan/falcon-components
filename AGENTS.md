@@ -1,7 +1,7 @@
 # Repository guidelines
 
 - This is an independent Falcon/Vue component library. Keep CloudBrowser business logic, credentials and production configuration outside this repository.
-- Read README.md and docs/roadmap.md before work. Planned APIs are proposals, not implemented capabilities.
+- Read README.md, docs/api.md and docs/roadmap.md before work. Separate the implemented framework from planned components and unverified device adapters.
 - Use Node 18 (prefer 18.20.8) for build tooling; receive the exact executable path from the environment or user. Do not commit a Node binary or a proprietary SDK.
 - Put reusable components in packages/<name>, examples in examples/, and design/compatibility evidence in docs/.
 - Use ESM JavaScript, two-space indentation and semicolons. Falcon UI uses its supported Vue 2/CSS subset, not browser DOM APIs.

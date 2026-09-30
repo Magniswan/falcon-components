@@ -1,8 +1,8 @@
 # falcon-components
 
-面向 Falcon/Vue 词典笔应用的开源组件库。键盘是第一个规划中的组件，后续可增加弹层、日历、图表等组件。
+面向 Falcon/Vue 词典笔应用的开源组件框架。先提供共享组件管理和 GitHub 更新源，后续可增加键盘、日历、图表等独立组件。
 
-**当前状态：仓库结构和设计文档已经建立，尚未实现可运行的键盘或共享目录加载器。请勿将设计接口当作已发布 API。**
+**0.1.0：通用管理器、GitHub 更新源、前台下载确认与参考示例已实现。键盘未实现；Falcon 设备的文件、锁、网络和包外加载仍需宿主适配及真机验证。**
 
 ## 目标
 
@@ -16,43 +16,56 @@
 
 ```text
 packages/
-  core/                 公共接口和组件描述约定
-  loader/               共享目录加载适配，待实现
-  keyboard/             键盘组件、编辑核心和拼音引擎，待实现
+  core/                 清单校验、接口兼容、错误码与取消
+  loader/               GitHub 源、本地检查、下载校验和原子安装
+  ui/                   前台会话与 Falcon/Vue 下载提示
+  node-adapter/         电脑上的文件/网络/加载参考实现
+  keyboard/             设计占位，本轮不实施
+catalog/                GitHub 更新目录与 Hello 示例组件
 examples/
-  README.md             示例应用规划
+  node-host/            可运行的完整参考示例
+  falcon-host/          Falcon 页面与宿主接入模板
 docs/
-  architecture.md       多组件结构和宿主边界
-  shared-components.md  设备公共目录与兼容性约定
-  roadmap.md            实施顺序和验证条件
+  getting-started.md     从下载到接入
+  host-adapters.md       设备平台接口契约
+  github-source.md       更新目录与组件发布
+  api.md                框架 API
 scripts/
-  check-repository.mjs   仓库结构、清单和文档链接检查
+  check-repository.mjs   结构、JSON、代码语法与文档链接检查
+  check-catalog.mjs      组件目录、大小与哈希检查
+  check-falcon-build.mjs 本地 Falcon 工具链编译检查
+test/                   行为测试
 ```
 
-## 第一个组件：键盘
+## 缺失组件的前台流程
 
-规划支持离线全拼、常用字词候选、英文、数字、符号、长按删除、确认和取消。显示模式包含底部覆盖、悬浮和宿主布局避让；键盘外区域可选择继续操作、阻止操作或点击关闭。
+应用指定组件 ID 和精确版本 → 检查本地 → 缺失时前台提示“下载 / 取消” → 确认后连接 GitHub → 校验并原子安装 → 加载组件。失败可重试，取消不加载晚到结果。已有完整版本直接离线使用。
 
-详见 [键盘设计](packages/keyboard/README.md)。
+框架入口与提示随应用构建，远程组件按需安装。参见 [快速接入](docs/getting-started.md)、[API](docs/api.md) 和 [示例](examples/README.md)。键盘仅保留 [设计文档](packages/keyboard/README.md)。
 
 ## 设备公共目录
 
 示例目录为 `/userdisk/components/falcon-components/<组件>/<版本>/`，实际根目录由宿主配置。共享代码和资源，各应用分别维护运行时状态。
 
-当前尚未验证 Falcon 对包外绝对路径模块的加载、QuickJS 字节码兼容和外部组件样式注册。root 文件访问权限按已满足处理，运行时加载仍需验证。详见 [公共目录方案](docs/shared-components.md)。
+按版本保存代码与资源，各应用创建自己的实例；下载使用跨应用锁和临时目录。Node 示例验证完整流程；root 文件权限按已满足处理，Falcon 包外模块、样式和硬件兼容仍需验证。详见 [公共目录方案](docs/shared-components.md) 与 [宿主适配](docs/host-adapters.md)。
 
 ## 本地检查
 
-使用 Node 18，推荐 18.20.8。当前检查不依赖第三方包，无需先安装依赖：
+使用 Node 18，推荐 18.20.8。npm ci 只连接仓库内的 workspace 包，没有外部运行时依赖：
 
 ```sh
-node scripts/check-repository.mjs
+npm ci
+npm test
+npm run check
+npm run demo
 ```
 
-也可运行 `npm run check`。这些检查只验证仓库骨架，不构成 UI、动态加载或设备兼容性证明。
+首次 demo 输入 y 才从公开 GitHub 源下载 Hello；第二次可运行 `node examples/node-host/main.mjs --offline`。文件保存在 `.demo-device/components/`，不会提交。
+
+本地工具链可运行 `npm run check:falcon`，先配置 FALCON_CLI_PATH 指向自己的 aiot-vue-cli/src/cli.js；可选 FALCON_UI_PATH 指向 falcon-ui。编译输出位于忽略的 artifacts/，只用于源码/生产字节码检查，不是可运行 AMR 或真机证据。
 
 ## 开源与贡献
 
 原创代码与文档采用 [MIT License](LICENSE)。项目不包含 Falcon SDK、固件、设备身份、私钥或第三方词库。引入外部引擎、字体和词库时，逐项记录来源与许可证，详见 [贡献指南](CONTRIBUTING.md) 和 [第三方资源说明](THIRD_PARTY_NOTICES.md)。
 
-参见 [实施路线](docs/roadmap.md)。
+包目前保持 private，未发布 npm；使用 GitHub 克隆和本地源码包接入。参见 [实施路线](docs/roadmap.md)。

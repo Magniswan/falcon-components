@@ -13,5 +13,8 @@ dist/
 *.key
 *.sqlite*
 artifacts/
+.demo-device/
+examples/falcon-host/.falcon/
+examples/falcon-host/.falcon_/
 .DS_Store
 Thumbs.db
