@@ -1,5 +1,9 @@
 # 验证记录
 
+## RK3562 硬件探测
+
+2026-09-30 在真实 RK3562/AArch64 设备上确认显示配置、触摸能力声明和 NPU 驱动/Runtime，并用固定来源的公开 RK3562 MobileNet 模型完成一次实际推理。详见 [设备探测与键盘规划证据](device-probe-rk3562.md)。这不代表键盘、Falcon 推理桥接或公共目录 Vue UI 加载已通过验收。
+
 ## 0.1.0 框架
 
 日期：2026-09-30。框架代码提交：`f8d4d69`。环境：Windows、Node 18.20.8；Falcon 编译工具为本地 aiot-vue-cli 1.0.32，检查产物使用 QuickJS 20200705 / bigNum=false。
