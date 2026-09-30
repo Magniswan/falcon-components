@@ -52,3 +52,11 @@ handle 是 `{ directory, manifest, instance, dispose() }`，dispose 只调用实
 状态：idle → checking → prompt → downloading → ready；失败为 error，取消为 cancelled。本地已有版本直接 checking → ready。
 
 `ComponentDownloadPrompt.vue` 的 props 是 `{ state, width, height }`，事件为 download、cancel、retry。宿主负责订阅、绑定和页面生命周期转发。
+
+## keyboard 0.1.0
+
+`createOfflineKeyboard()` 提供已包含离线词库的独立实例；`createKeyboard({ engine, timers?, onInset? })` 用于注入其他查询后端。Vue 使用 `KeyboardPanel.vue`，尺寸来自 `open({ bounds, ... })`，不读取全局 viewport。
+
+`open` 异步返回 `{ confirmed, text }`，支持 layout=t9/qwerty、mode=pinyin/english/number/symbol、presentation=bottom-overlay/floating/inset、multiline、maxLength 和 outsideAction。取消返回原文；页面隐藏调用 cancel，卸载调用 dispose。完整方法、事件和引擎契约见 [键盘 API](../packages/keyboard/README.md)。
+
+键盘的源码构建路径已实机验证；它尚未加入远程 catalog，不能直接调用 manager.load({ id: 'keyboard', ... }) 从当前 Release 下载。

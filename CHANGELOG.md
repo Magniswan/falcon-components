@@ -1,5 +1,13 @@
 # Changelog
 
+## Keyboard 0.1.0 - 2026-10-01 (source)
+
+- Add independent offline T9/QWERTY pinyin, English, numeric and symbol keyboard with 65,125 licensed dictionary records and precomputed indexes.
+- Add isolated editor sessions, candidate paging, cursor movement, newline, confirm/cancel, long deletion and touch gap/movement handling.
+- Add Falcon Vue Panel, bottom overlay/floating/inset contracts and a standalone AMR example built with an externally supplied SDK.
+- Verify RK3562 real-device input, floating geometry and repeat lifecycle; add behavioral tests, acceptance scripts and screenshots.
+- Keep framework packages at 0.2.0 and packages private. Keyboard is source integration only; public-directory Falcon loading, AI ranking and KMS overlay remain separate unverified work.
+
 ## 0.2.0 - 2026-09-30
 
 ### Breaking changes

@@ -1,0 +1,9 @@
+{
+  "repository": "https://github.com/rime/rime-pinyin-simp",
+  "commit": "0c6861ef7420ee780270ca6d993d18d4101049d0",
+  "file": "pinyin_simp.dict.yaml",
+  "license": "Apache-2.0",
+  "entries": 65125,
+  "sha256": "e341598343a0f0f2035bb1aafc34a7f3bb7887deeecb3f60796262aaa2983e6b",
+  "transformation": "Retain all records; replace ü with v; preserve word, syllables and weight; precompute sorted pinyin/T9 indexes. No Rime code included."
+}

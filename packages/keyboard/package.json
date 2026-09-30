@@ -1,8 +1,14 @@
 {
   "name": "@falcon-components/keyboard",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Planned floating pinyin/English keyboard for Falcon/Vue",
-  "license": "MIT"
+  "description": "Offline T9 and QWERTY pinyin/English keyboard for Falcon/Vue",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js",
+    "./offline": "./src/offline.js",
+    "./panel": "./src/KeyboardPanel.vue",
+    "./lexicon": "./data/lexicon.js"
+  }
 }

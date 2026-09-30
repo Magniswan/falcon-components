@@ -1,49 +1,61 @@
-# keyboard（待实现）
+# keyboard 0.1.0
 
-## 第一版范围
+离线九宫格和 26 键全拼键盘，支持 65,125 条字词、候选翻页、英文大小写、数字符号、光标移动、删除/长按删除、换行、确认和取消。源码随宿主 AMR 构建路径已在 RK3562/Falcon 真机上验证，详见 [实机验收](../../docs/keyboard-device-acceptance.md)。包保持 private，尚未发布 npm 或加入远程组件 catalog。
 
-离线九宫格与 26 键全拼、常用字词候选与翻页、英文大小写、数字和符号、光标移动、删除与长按删除、确认和取消。第一版加入几何命中与边缘容错；整句输入、模糊音、语言纠错和个性化学习属于后续能力。
-
-## 结构
-
-- Vue UI：按键、候选栏、编辑区和显示布局。
-- 编辑核心：草稿、光标、选择范围、字符边界和长度限制。
-- 可替换拼音引擎：组合、拼音切分、候选查询和选择。
-- 词库：基础词库与可选扩展词库，分别维护来源和版本。
-
-宿主提供逻辑尺寸、资源读取和可选的用户词频存储。组件不处理浏览器导航、网络认证或业务提交。优先评估现有引擎与词库复用；JavaScript 与原生方案按目标设备的资源、功能和许可证选择，尚未选定依赖。
-
-## 建议接口（尚未实现）
+## 接入
 
 ```js
-const keyboard = await host.loadComponent('keyboard', { version: '1.0.0' });
+import { createOfflineKeyboard } from '@falcon-components/keyboard/offline';
+import KeyboardPanel from '@falcon-components/keyboard/panel';
+
+const keyboard = createOfflineKeyboard();
+// Vue: components: { KeyboardPanel }, template: <keyboard-panel :keyboard="keyboard" />
 const result = await keyboard.open({
   value: initialText,
   mode: 'pinyin',
-  layout: 't9', // 或 qwerty
-  presentation: 'bottom-overlay',
-  bounds: { x, y, width, height },
-  outsideAction: 'interact',
+  layout: 't9', // qwerty 也支持
+  presentation: 'bottom-overlay', // floating 或 inset
+  bounds: hostKeyboardBounds, // { x, y, width, height }，宿主逻辑坐标
+  multiline: true,
 });
 if (result.confirmed) saveText(result.text);
+// 隐藏/切页时 keyboard.cancel()；卸载时 keyboard.dispose()。
 ```
 
-取消、关闭、切页和卸载需有清晰语义；取消不修改原值。草稿和未选词拼音分别维护；旧查询不写入新会话。长按删除在 touchcancel、关闭和卸载时停止。
+接入 Falcon 构建工具时，可以直接使用相对源码路径，或配置 alias 指向上述入口。宿主需提供足够的矩形区域（至少 240 × 190 逻辑像素；较窄屏幕建议九宫格），并把 Panel 放入覆盖目标区域的父容器。组件不读取全局屏幕、不选择 AppID，也不调用系统输入法。
 
-## 显示
+完整示例及独立 AMR 构建方法见 [keyboard-demo](../../examples/keyboard-demo/README.md)。
 
-- bottom-overlay：覆盖底部，不自动改变宿主布局。
-- floating：在宿主指定矩形内显示，拖动可后续增加。
-- inset：向宿主报告占用区域，由宿主让输入框避让。
+## API
 
-键盘外触控可选择 interact、block 或 dismiss。透明容器不保证触摸穿透，命中范围需独立验证。小屏高度不足时选择紧凑或全屏布局，不将全键盘机械缩小。
+`createKeyboard({ engine, timers?, onInset? })` 可注入其他词库/查询引擎。`engine.query(composition, { layout, limit })` 返回候选数组或 Promise，候选包含 `{ id, text, consumed }`。晚到结果不会更新新会话。`createPinyinEngine(lexicon)` 是默认离线引擎，`createOfflineKeyboard()` 已包含引擎及其释放。
 
-## 触控修正与可选 AI
+| 方法 | 行为 |
+| --- | --- |
+| open(options) | 返回 Promise<{ confirmed, text }>；打开新会话先取消旧会话 |
+| cancel / dispose | 取消返回原文；dispose 清订阅、定时器并禁止重新打开 |
+| snapshot / subscribe | 返回状态快照；subscribe 立即通知并返回 off |
+| press(value) | 逻辑输入或功能键；Panel 已连接触控 |
+| setMode(mode) | pinyin / english / number / symbol；清空未选词组合 |
+| setLayout(layout) | t9 / qwerty；布局变更清空组合 |
+| select(index) / page(direction, count) | 选候选/翻页；Panel 自动按宽度显示 3 或 6 个 |
+| touchStart / touchMove / touchEnd / touchCancel | 注入归一化、相对 Panel 的 { x, y, id } |
+| outside() | 宿主在键盘外调用，返回 interact / block / dismiss，dismiss 取消 |
 
-宿主传入已归一化的落点、指针标识和移动/取消事件，组件计算相邻按键；键帽位置保持稳定。基础命中与输入反馈不等待 AI，数字、密码和功能键不使用语言纠错。个性化落点校准后续再加入，只从明确纠正或高置信度输入学习并允许重置。
+open 还接受 `maxLength`（默认 4096 个受支持的字符簇）、`outsideAction`（默认 interact）。确认有组合时采用首候选；没有匹配时保留原始组合。长度已满时插入不生效。普通单行模式的换行键不插入换行；确认键始终独立。
 
-AI 后端拟用于候选排序，缺失或失败时继续使用基础拼音结果。旧查询不更新新会话，候选按下期间冻结列表。模型与词库分别记录许可证并纳入签名资源；尚未选定任务模型或实现推理桥接。已完成的 RK3562 NPU 基础测试与未验证项见 [设备探测记录](../../docs/device-probe-rk3562.md)。
+默认编辑器处理代理对、常见组合音标、emoji 修饰符、ZWJ 和旗帜；不宣称实现完整 UAX #29 语言分段。
 
-## 验证
+## 显示与触控
 
-纯逻辑验证文本/拼音状态、Unicode 删除边界、候选顺序和会话取消；真机测首次打开、按键延迟、候选查询、内存和重复开关。叠加硬件视频时实测 hole/KMS 图层和触控，不用 CSS z-index 或模拟器代替硬件证据。
+- bottom-overlay/floating 都使用宿主矩形内的 Falcon Vue UI；floating 第一版不支持拖动。
+- inset 通过 onInset(bounds/null) 报告占用区域，由宿主调整其他内容。
+- Panel 只占用指定矩形；外部 block/dismiss 策略由宿主接线，不能依靠透明全屏容器穿透触控。
+- 几何容错覆盖字母和拼音键间的 4px 间隙；移动超过 18px、触控取消或越界松开不会输入。数字、符号及功能键不使用间隙修正。
+- 候选按下期间保持原选择；移动取消选择。长按删除 450ms 后开始，每 90ms 重复，松开/隐藏/卸载清理。
+
+第一版尚无模糊音、整句输入、语言纠错、个人落点学习或 NPU 排序。词库许可见 [数据说明](data/README.md)。
+
+## 接入边界
+
+当前实机通过的是源码随 AMR 构建的组件。公共目录的签名加载由宿主框架与适配器负责，Falcon 原生适配及包外 Vue 样式加载仍待验证；不能据此把这个键盘称为已支持设备公共目录热更新。普通 Vue 悬浮已验证，KMS/视频硬件图层叠加未验证。

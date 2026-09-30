@@ -1,8 +1,8 @@
 # falcon-components
 
-面向 Falcon/Vue 词典笔应用的开源组件框架。先提供共享组件管理和 GitHub 更新源，后续可增加键盘、日历、图表等独立组件。
+面向 Falcon/Vue 词典笔应用的开源组件框架，提供共享组件管理、GitHub 更新源和离线键盘，后续可加入日历、图表等独立组件。
 
-**0.2.0：签名发布、下载和离线加载的强制验签已接入。公钥随宿主应用构建，GitHub Release 提供签名目录，文件按已签名提交下载。键盘未实现；Falcon 原生密码接口和包外加载仍需目标设备验证。**
+**框架发布版本 0.2.0 已接入强制验签。当前源码新增 keyboard 0.1.0：九宫格/26 键拼音、英文数字符号、触控容错及悬浮显示已通过 RK3562 真机测试。键盘使用源码随 AMR 构建；Falcon 公共目录原生验签及包外 UI 加载仍待验证。**
 
 ## 目标
 
@@ -20,11 +20,12 @@ packages/
   loader/               GitHub 源、本地检查、下载校验和原子安装
   ui/                   前台会话与 Falcon/Vue 下载提示
   node-adapter/         电脑上的文件/网络/加载参考实现
-  keyboard/             设计占位，本轮不实施
+  keyboard/             离线拼音/英文键盘、编辑核心和 Falcon Vue Panel
 catalog/                GitHub 更新目录与 Hello 示例组件
 examples/
   node-host/            可运行的完整参考示例
   falcon-host/          Falcon 页面与宿主接入模板
+  keyboard-demo/        已上机验证的键盘示例与独立 AMR 构建
 docs/
   getting-started.md     从下载到接入
   host-adapters.md       设备平台接口契约
@@ -41,7 +42,7 @@ test/                   行为测试
 
 应用指定组件 ID 和精确版本 → 检查本地签名和文件 → 缺失时前台提示“下载 / 取消” → 确认后连接 GitHub → 验证目录及清单签名 → 校验文件并原子安装 → 加载前复核。失败可重试，取消不加载晚到结果。已有完整签名版本直接离线使用。
 
-框架入口与提示随应用构建，远程组件按需安装。参见 [快速接入](docs/getting-started.md)、[API](docs/api.md) 和 [示例](examples/README.md)。键盘仅保留 [设计文档](packages/keyboard/README.md)。
+框架入口与提示随应用构建，远程组件按需安装。参见 [快速接入](docs/getting-started.md)、[API](docs/api.md) 和 [示例](examples/README.md)。键盘源码接入见 [keyboard](packages/keyboard/README.md) 与 [实机验收](docs/keyboard-device-acceptance.md)；现有 GitHub catalog 仍只包含 Hello。
 
 ## 自动签名发布
 
@@ -72,6 +73,6 @@ npm run demo
 
 ## 开源与贡献
 
-原创代码与文档采用 [MIT License](LICENSE)。项目不包含 Falcon SDK、固件、设备身份、私钥或第三方词库。引入外部引擎、字体和词库时，逐项记录来源与许可证，详见 [贡献指南](CONTRIBUTING.md) 和 [第三方资源说明](THIRD_PARTY_NOTICES.md)。
+原创代码与文档采用 [MIT License](LICENSE)。键盘词库来自固定版本的 rime-pinyin-simp，使用 Apache-2.0，保留原始许可和来源。项目不包含 Falcon SDK、固件、设备身份或私钥。详见 [贡献指南](CONTRIBUTING.md) 和 [第三方资源说明](THIRD_PARTY_NOTICES.md)。
 
 包目前保持 private，未发布 npm；使用 GitHub 克隆和本地源码包接入。参见 [实施路线](docs/roadmap.md) 和 [验证记录](docs/verification.md)。
