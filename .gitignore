@@ -1,0 +1,17 @@
+node_modules/
+dist/
+.falcon/
+.falcon_/
+*.amr
+*.js.bin
+*.so
+*.log
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.sqlite*
+artifacts/
+.DS_Store
+Thumbs.db

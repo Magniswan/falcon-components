@@ -1,0 +1,8 @@
+{
+  "name": "@falcon-components/keyboard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Planned floating pinyin/English keyboard for Falcon/Vue",
+  "license": "MIT"
+}

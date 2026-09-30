@@ -1,0 +1,8 @@
+{
+  "name": "@falcon-components/loader",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Planned adapter for shared-directory Falcon components",
+  "license": "MIT"
+}
