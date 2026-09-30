@@ -68,4 +68,4 @@ npm run demo
 
 原创代码与文档采用 [MIT License](LICENSE)。项目不包含 Falcon SDK、固件、设备身份、私钥或第三方词库。引入外部引擎、字体和词库时，逐项记录来源与许可证，详见 [贡献指南](CONTRIBUTING.md) 和 [第三方资源说明](THIRD_PARTY_NOTICES.md)。
 
-包目前保持 private，未发布 npm；使用 GitHub 克隆和本地源码包接入。参见 [实施路线](docs/roadmap.md)。
+包目前保持 private，未发布 npm；使用 GitHub 克隆和本地源码包接入。参见 [实施路线](docs/roadmap.md) 和 [验证记录](docs/verification.md)。
