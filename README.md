@@ -2,7 +2,7 @@
 
 面向 Falcon/Vue 词典笔应用的开源组件框架。先提供共享组件管理和 GitHub 更新源，后续可增加键盘、日历、图表等独立组件。
 
-**0.1.1：通用管理器、GitHub 更新源、前台下载确认与参考示例已实现，增加 GitHub Actions 私钥签名打包工作流。宿主加载器的强制验签尚未接入；键盘未实现，Falcon 设备适配仍需真机验证。**
+**0.2.0：签名发布、下载和离线加载的强制验签已接入。公钥随宿主应用构建，GitHub Release 提供签名目录，文件按已签名提交下载。键盘未实现；Falcon 原生密码接口和包外加载仍需目标设备验证。**
 
 ## 目标
 
@@ -39,7 +39,7 @@ test/                   行为测试
 
 ## 缺失组件的前台流程
 
-应用指定组件 ID 和精确版本 → 检查本地 → 缺失时前台提示“下载 / 取消” → 确认后连接 GitHub → 校验并原子安装 → 加载组件。失败可重试，取消不加载晚到结果。已有完整版本直接离线使用。
+应用指定组件 ID 和精确版本 → 检查本地签名和文件 → 缺失时前台提示“下载 / 取消” → 确认后连接 GitHub → 验证目录及清单签名 → 校验文件并原子安装 → 加载前复核。失败可重试，取消不加载晚到结果。已有完整签名版本直接离线使用。
 
 框架入口与提示随应用构建，远程组件按需安装。参见 [快速接入](docs/getting-started.md)、[API](docs/api.md) 和 [示例](examples/README.md)。键盘仅保留 [设计文档](packages/keyboard/README.md)。
 
@@ -47,7 +47,7 @@ test/                   行为测试
 
 私钥配置在仓库 Actions Secret `FALCON_COMPONENTS_SIGNING_PRIVATE_KEY`，可信公钥见 [公钥文件](trust/release-public-key.json)。Actions 手动运行生成已签名测试产物；推送与根 package.json 版本一致的 `vX.Y.Z` 标签后，自动测试、打包、签名并创建 GitHub Release。
 
-组件清单、目录和完整源码包分别签名，校验使用宿主预先固定的公钥。按项目决定不做防回滚、过期检查或最高版本记录。发布、校验命令及密钥保管详见 [签名发布指南](docs/signing.md)。当前 loader 仍使用普通 raw-file 清单，签名产物的设备接入是后续工作。
+组件清单、目录和完整源码包分别签名，校验使用宿主预先固定的公钥。Release 另提供 component-catalog.sig.json，内含签署的源提交与各组件原始清单签名。按项目决定不做防回滚、过期检查或最高版本记录。发布、校验命令及密钥保管详见 [签名发布指南](docs/signing.md)。未签名的旧安装会被拒绝，迁移见 [接入指南](docs/getting-started.md)。
 
 ## 设备公共目录
 
@@ -66,7 +66,7 @@ npm run check
 npm run demo
 ```
 
-首次 demo 输入 y 才从公开 GitHub 源下载 Hello；第二次可运行 `node examples/node-host/main.mjs --offline`。文件保存在 `.demo-device/components/`，不会提交。
+首次 demo 输入 y 才从公开 GitHub Release 签名源下载 Hello；第二次可运行 `node examples/node-host/main.mjs --offline`。文件保存在 `.demo-device/signed-components/`，不会提交。demo 使用宿主 checkout 中的固定公钥，下载目录不能提供新公钥。
 
 本地工具链可运行 `npm run check:falcon`，先配置 FALCON_CLI_PATH 指向自己的 aiot-vue-cli/src/cli.js；可选 FALCON_UI_PATH 指向 falcon-ui。编译输出位于忽略的 artifacts/，只用于源码/生产字节码检查，不是可运行 AMR 或真机证据。
 

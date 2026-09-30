@@ -1,6 +1,6 @@
 # GitHub Actions 签名发布
 
-0.1.1 提供发布端 Ed25519 签名、归档与公开验签工具。加载器、可信公钥和验签逻辑属于宿主应用，不能从设备公共组件目录获取信任依据。当前 runtime loader 尚未接入强制验签；配置 Secret、生成签名包与词典笔实际拒绝篡改是不同的验证层。
+0.2.0 完成发布端 Ed25519 签名，以及宿主框架在下载、安装和离线加载时的强制验签。加载器、可信公钥和验签逻辑属于宿主应用，不能从设备公共组件目录获取信任依据。通用框架/Node 流程已实现；Falcon 原生密码能力和实际包外加载仍需目标设备验证。
 
 ## 密钥与 Secret
 
@@ -15,6 +15,12 @@
 官方私钥的本机备份放在仓库外的用户目录 `.falcon-components-signer/release-private-key.pem`。本次 Windows 配置移除了目录继承权限，仅允许当前用户和 SYSTEM；迁移电脑时应通过自己的安全备份流程保存密钥。GitHub Secret 不能作为可导出备份。
 
 其他维护者 fork 项目后，应生成自己的密钥、公钥配置和 Secret，并调整 build 脚本中的仓库身份及 workflow 的仓库限制；不会共享官方私钥。
+
+## 密钥轮换
+
+轮换需要宿主发布者主动更新应用内的公钥，组件不能发起信任变更。先生成独立新密钥并妥善备份，将新公钥加入宿主 trustedKeys（可暂时同时保留旧公钥）；宿主更新后，再更新发布端公钥文件与 GitHub Secret，用新私钥发布组件。
+
+若仍有应用只固定旧公钥，它会拒绝新密钥签名，不会自动从 GitHub 接受替代公钥。旧密钥泄露时应更新宿主、移除其信任并处理旧安装；本版不自动下发吊销、公钥委托或防回滚状态。GitHub Secret 更新与正式密钥轮换是维护者显式执行的操作。
 
 ## 签名格式
 
@@ -36,7 +42,7 @@
 产物内的绑定关系：
 
 1. 每个 `manifest.json.sig.json` 签署原始组件清单，清单包含组件 ID、版本、入口、运行时、资源大小及 SHA-256。
-2. `catalog/index.json` 在打包时增加每条记录的 manifestSha256，目录签名是 `catalog/index.json.sig.json`，防止替换版本记录或拼接不同清单。
+2. `catalog/index.json` 在打包时增加 repository、完整源码 commit ref，以及每条记录的 manifestSha256 和原始清单 signature。目录签名是 `catalog/index.json.sig.json`，另外作为 Release 附件 component-catalog.sig.json 发布；设备按签署 commit 获取文件，防止替换版本记录或拼接不同清单。
 3. `release-manifest.json` 绑定仓库身份、根版本、Git commit 和全部分发文件的大小/哈希；其 sidecar 签署整个文件。
 4. `falcon-components-vX.Y.Z.tar.gz.sig.json` 签署归档的名称、大小与 SHA-256，并绑定版本、仓库和 commit。下载后先校验归档，再解压。
 
@@ -46,10 +52,10 @@
 
 [Framework checks](../.github/workflows/check.yml) 在 main push 和普通 pull_request 上运行，不引用签名 Secret。[Signed component release](../.github/workflows/release.yml) 只接受本仓库的版本标签或 main 上的手动运行，不接受 PR 代码执行。
 
-流程为：固定 SHA 的官方 Actions → Node 18.20.8 → npm ci（禁用安装脚本）→ 行为测试与仓库检查 → 确认提交属于 main → Git archive 提取当前已提交源码 → 校验密钥与公钥匹配 → 校验 catalog → 签名 → 独立公钥验签 → 上传 artifact。
+流程为：固定 SHA 的官方 Actions → Node 18.20.8 → npm ci（禁用安装脚本）→ 行为测试与仓库检查 → 确认提交属于 main → Git archive 提取当前已提交源码 → 校验密钥与公钥匹配 → 校验 catalog → 签名 → 独立公钥验签 → 强制验签宿主下载/离线加载 smoke check → 上传 artifact。
 
 - 手动运行：Actions 页面选择 Signed component release，选择 main，再 Run workflow。只生成 artifact，便于验证 Secret 和打包流程。
-- 正式发布：更新根 package.json/package-lock.json 和 CHANGELOG，提交并推送 main；推送对应 `vX.Y.Z` 标签。标签必须匹配根版本。随后自动生成 GitHub Release 和三个附件：归档、归档签名、SHA256SUMS。
+- 正式发布：更新根 package.json/package-lock.json 和 CHANGELOG，提交并推送 main；推送对应 `vX.Y.Z` 标签。标签必须匹配根版本。随后自动生成 GitHub Release 和四个附件：归档、归档签名、SHA256SUMS、component-catalog.sig.json。
 - 发布 job 只获得 contents:write / actions:read，用 runner 自带 GitHub CLI 下载已验证 artifact 并发布，不读取私钥。
 - 发布不覆盖现有 Release；重复标签、版本不一致、签名或测试失败会停止。需要修复时发布新的版本。
 - 不发布 npm，不分发 Falcon SDK/AMR，不部署 CloudBrowser 或操作词典笔。
@@ -75,16 +81,18 @@ Remove-Item Env:FALCON_COMPONENTS_SIGNING_KEY_FILE
 消费者使用自己预先信任的宿主公钥文件，先验证归档，成功后再解压检查全部文件：
 
 ```sh
-node scripts/verify-archive.mjs ./downloads/falcon-components-v0.1.1.tar.gz ./host-trust/release-public-key.json
+node scripts/verify-archive.mjs ./downloads/falcon-components-v0.2.0.tar.gz ./host-trust/release-public-key.json
 mkdir -p ./verified-bundle
-tar -xzf ./downloads/falcon-components-v0.1.1.tar.gz -C ./verified-bundle
+tar -xzf ./downloads/falcon-components-v0.2.0.tar.gz -C ./verified-bundle
 node scripts/verify-release.mjs ./verified-bundle ./host-trust/release-public-key.json
 ```
 
 未指定公钥参数时，工具使用当前验证工具 checkout 内的公钥，不会使用待验证目录里的公钥。校验失败时进程返回非零；不要继续解压、安装或执行。
 
-## 接入宿主加载器的下一步
+## 宿主强制验签
 
-宿主新增 verifyEd25519 平台接口；source 传递原始签名和 payload；安装保存签名；inspect/load 在导入模块前重新验签与检查文件。前台提示保留“缺失 → 确认下载”，验签失败显示错误且拒绝加载。
+宿主通过 createSignatureVerifier({ trustedKeys, crypto }) 固定自己的公钥；同一 trust 传入 source 和 manager。source 传递 catalogSignature/manifestSignature；manager 自行验证目录与清单绑定，不信任源返回的已归一化 manifest。安装保存原始 manifest.json 字节及 manifest.json.sig.json；inspect/load 重新验签并检查文件，完全离线也必须验证。
 
-Node 验签工具使用 node:crypto。Falcon/QuickJS 不等于 Node，需要接入已验证的原生密码库能力，再做真机下载、篡改拒绝、离线加载和多应用验证。现有 raw-file 示例只证明 SHA-256 校验，不构成签名加载的验收。
+前台仍为“缺失 → 确认下载”；缺签名、格式错误、未知公钥、用途不符、签名无效都转为错误并拒绝加载，没有 unsigned fallback。旧安装迁移与完整接入代码见 [接入指南](getting-started.md)。
+
+核心不实现密码算法，crypto.verifyEd25519 接收 32 字节原始公钥、完整消息和 64 字节签名；具体平台契约见 [宿主适配](host-adapters.md)。Node 使用 node:crypto。Falcon 模板固定公钥但仍需要真实原生密码库能力，未提供无证据的通用设备二进制。

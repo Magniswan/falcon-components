@@ -1,11 +1,11 @@
 {
   "name": "@falcon-components/loader",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "GitHub component source and transactional shared-directory installation",
   "exports": "./src/index.js",
   "files": ["src", "README.md"],
-  "dependencies": { "@falcon-components/core": "0.1.0" },
+  "dependencies": { "@falcon-components/core": "0.2.0" },
   "license": "MIT"
 }

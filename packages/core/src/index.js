@@ -1,39 +1,6 @@
-export class ComponentError extends Error {
-  constructor(code, message, cause) {
-    super(message);
-    this.name = 'ComponentError';
-    this.code = code;
-    if (cause) this.cause = cause;
-  }
-}
-
-export function fail(code, message) {
-  throw new ComponentError(code, message);
-}
-
-export function createCancellationToken() {
-  let cancelled = false;
-  const handlers = new Set();
-  return {
-    get cancelled() { return cancelled; },
-    throwIfCancelled() {
-      if (cancelled) fail('CANCELLED', '操作已取消');
-    },
-    onCancel(handler) {
-      if (cancelled) { handler(); return () => {}; }
-      handlers.add(handler);
-      return () => handlers.delete(handler);
-    },
-    cancel() {
-      if (cancelled) return;
-      cancelled = true;
-      for (const handler of handlers) {
-        try { handler(); } catch (_) { /* Cancellation must notify every listener. */ }
-      }
-      handlers.clear();
-    },
-  };
-}
+import { fail } from './errors.js';
+export { ComponentError, fail, createCancellationToken } from './errors.js';
+export { createSignatureVerifier, decodeBase64, decodeUtf8, equalBytes, SIGNATURE_PAYLOAD_LIMIT, SIGNATURE_ENVELOPE_LIMIT } from './signatures.js';
 
 export function validateId(value) {
   if (typeof value !== 'string' || !/^[a-z][a-z0-9-]{0,63}$/.test(value)) {
@@ -107,7 +74,7 @@ export function validateManifest(value, expected) {
   const files = value.files.map((file) => {
     if (!file || typeof file !== 'object') fail('INVALID_MANIFEST', '组件文件记录无效');
     const path = validateRelativePath(file.path);
-    if (path === 'manifest.json' || paths.has(path)) fail('INVALID_MANIFEST', '组件文件路径重复或占用保留名称');
+    if (['manifest.json', 'manifest.json.sig.json'].some((reserved) => path === reserved || path.startsWith(`${reserved}/`)) || paths.has(path)) fail('INVALID_MANIFEST', '组件文件路径重复或占用保留名称');
     paths.add(path);
     if (!Number.isSafeInteger(file.size) || file.size < 0 || file.size > 16 * 1024 * 1024
       || typeof file.sha256 !== 'string' || !/^[a-f0-9]{64}$/.test(file.sha256)) {
@@ -150,6 +117,10 @@ export function errorMessage(error) {
     INCOMPATIBLE_RUNTIME: '此组件暂不支持当前设备', CORRUPT_INSTALL: '本地组件损坏，请重新安装',
     STORAGE_ERROR: '无法保存组件，请检查可用空间', LOCK_TIMEOUT: '其他应用正在安装组件，请稍后重试',
     LOAD_ERROR: '组件加载失败，请重试', INVALID_MANIFEST: '组件信息无效，请联系维护者',
+    SIGNATURE_REQUIRED: '组件缺少签名，已拒绝加载', SIGNATURE_INVALID: '组件签名校验失败，已拒绝加载',
+    INVALID_SIGNATURE: '组件签名信息无效，已拒绝加载', UNTRUSTED_KEY: '组件发布者不受信任，已拒绝加载',
+    INVALID_TRUST: '应用公钥配置无效，请联系应用维护者',
+    CRYPTO_ERROR: '应用无法完成签名验证，已拒绝加载',
   };
   return messages[error && error.code] || '组件暂时不可用，请重试';
 }

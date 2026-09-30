@@ -1,8 +1,23 @@
 import { mkdir, lstat, readFile, writeFile, rename, rm } from 'node:fs/promises';
 import { resolve, relative, sep, dirname, isAbsolute } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { createHash } from 'node:crypto';
-import { ComponentError, fail } from '@falcon-components/core';
+import { createHash, createPublicKey, verify } from 'node:crypto';
+import { ComponentError, fail, createSignatureVerifier, SIGNATURE_ENVELOPE_LIMIT } from '@falcon-components/core';
+
+export function createNodeCrypto() {
+  return {
+    async sha256(bytes) { return createHash('sha256').update(bytes).digest('hex'); },
+    async verifyEd25519(publicKey, message, signature) {
+      const prefix = Buffer.from([48, 42, 48, 5, 6, 3, 43, 101, 112, 3, 33, 0]);
+      const key = createPublicKey({ key: Buffer.concat([prefix, Buffer.from(publicKey)]), type: 'spki', format: 'der' });
+      return verify(null, message, key, signature);
+    },
+  };
+}
+
+export function createNodeSignatureVerifier({ trustedKeys } = {}) {
+  return createSignatureVerifier({ trustedKeys, crypto: createNodeCrypto() });
+}
 
 export function createNodeStorage({ root, lockTimeoutMs = 10000 } = {}) {
   if (typeof root !== 'string' || !root) fail('INVALID_ROOT', '请指定组件根目录');
@@ -48,7 +63,7 @@ export function createNodeStorage({ root, lockTimeoutMs = 10000 } = {}) {
         const filename = await checkedPath(path);
         try {
           const stat = await lstat(filename);
-          if (!stat.isFile() || stat.size > 256 * 1024) fail('CORRUPT_INSTALL', '本地组件清单无效或过大');
+          if (!stat.isFile() || stat.size > (filename.endsWith('.sig.json') ? SIGNATURE_ENVELOPE_LIMIT : 256 * 1024)) fail('CORRUPT_INSTALL', '本地组件清单无效或过大');
           const text = await readFile(filename, 'utf8');
           try { return JSON.parse(text); } catch (_) { fail('CORRUPT_INSTALL', '本地组件清单 JSON 损坏'); }
         } catch (error) { if (error.code === 'ENOENT') return null; throw error; }

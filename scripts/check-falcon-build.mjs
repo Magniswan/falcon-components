@@ -15,7 +15,7 @@ try {
   await symlink(resolve(themePackage), resolve(output, 'node_modules/falcon-ui'), process.platform === 'win32' ? 'junction' : 'dir');
 } catch (error) { if (error.code !== 'ENOENT') throw error; }
 await writeFile(resolve(output, 'package.json'), JSON.stringify({
-  name: 'FalconComponentsCompileCheck', appid: 'BUILD_CHECK_ONLY', version: '0.1.0',
+  name: 'FalconComponentsCompileCheck', appid: 'BUILD_CHECK_ONLY', version: '0.2.0',
   quickjs: { version: '20200705', bigNum: false }, 'single-js-bundle': true,
 }));
 await writeFile(resolve(output, 'src/app.json'), JSON.stringify({

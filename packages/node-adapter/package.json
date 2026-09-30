@@ -1,11 +1,11 @@
 {
   "name": "@falcon-components/node-adapter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Node reference host for testing component installation and loading",
   "license": "MIT",
   "exports": "./src/index.js",
   "files": ["src", "README.md"],
-  "dependencies": { "@falcon-components/core": "0.1.0" }
+  "dependencies": { "@falcon-components/core": "0.2.0" }
 }

@@ -1,24 +1,29 @@
-import { ComponentError, assertCompatible, compareVersions, createCancellationToken, fail, joinPath, validateManifest, validateRequirement } from '@falcon-components/core';
+import { ComponentError, assertCompatible, compareVersions, createCancellationToken, equalBytes, fail, joinPath, validateManifest, validateRequirement } from '@falcon-components/core';
+import { validateCatalog } from './catalog.js';
 
-export function createComponentManager({ root, storage, source, runtime } = {}) {
+export function createComponentManager({ root, storage, source, runtime, trust } = {}) {
   joinPath(root, 'probe');
   const storageMethods = ['readJson', 'readBytes', 'writeJson', 'writeBytes', 'mkdir', 'rename', 'removeTree', 'sha256', 'withLock'];
   if (!storage || storageMethods.some((name) => typeof storage[name] !== 'function')
-    || !source || typeof source.resolve !== 'function' || typeof source.latest !== 'function'
+    || !source || typeof source.resolve !== 'function' || typeof source.catalog !== 'function'
     || !runtime || typeof runtime.importModule !== 'function') {
     fail('INVALID_ADAPTER', '组件管理器缺少存储、更新源或加载适配器');
   }
+  if (!trust || typeof trust.verify !== 'function') fail('INVALID_TRUST', '组件管理器必须使用宿主可信公钥验签');
   let sequence = 0;
   const directoryFor = ({ id, version }) => joinPath(root, id, version);
   async function inspect(requirement, token = createCancellationToken()) {
     const expected = validateRequirement(requirement);
     token.throwIfCancelled();
     const directory = directoryFor(expected);
-    const raw = await storage.readJson(joinPath(directory, 'manifest.json'));
+    const signature = await storage.readJson(joinPath(directory, 'manifest.json.sig.json'));
+    const raw = await storage.readBytes(joinPath(directory, 'manifest.json'));
     token.throwIfCancelled();
-    if (raw === null) return null;
+    if (raw === null && signature === null) return null;
+    const verified = await trust.verify(signature, { purpose: 'component-manifest', token });
+    if (!equalBytes(raw, verified.bytes)) fail('CORRUPT_INSTALL', '本地清单与签名原始内容不一致');
     let manifest;
-    try { manifest = validateManifest(raw, expected); }
+    try { manifest = validateManifest(verified.value, expected); }
     catch (error) { throw new ComponentError('CORRUPT_INSTALL', '本地组件清单损坏', error); }
     assertCompatible(manifest, runtime);
     for (const file of manifest.files) {
@@ -45,7 +50,13 @@ export function createComponentManager({ root, storage, source, runtime } = {}) 
       if (existing) return existing;
       token.throwIfCancelled();
       const resolved = await source.resolve(expected, token);
-      const manifest = validateManifest(resolved.manifest, expected);
+      // Verify independently: a custom source cannot turn unsigned manifests into trusted installs.
+      const index = validateCatalog((await trust.verify(resolved.catalogSignature, { purpose: 'catalog', token })).value, source.repository);
+      const record = index.components.find((item) => item.id === expected.id && item.version === expected.version);
+      if (!record) fail('COMPONENT_NOT_FOUND', '签名目录中没有请求的组件');
+      const signed = await trust.verify(resolved.manifestSignature, { purpose: 'component-manifest', token });
+      if (await storage.sha256(signed.bytes) !== record.manifestSha256) fail('MANIFEST_MISMATCH', '组件清单不属于已签名目录');
+      const manifest = validateManifest(signed.value, expected);
       assertCompatible(manifest, runtime);
       const stage = joinPath(root, '.staging', `${expected.id}-${expected.version}-${Date.now()}-${++sequence}-${Math.random().toString(36).slice(2)}`);
       const directory = directoryFor(expected);
@@ -71,7 +82,8 @@ export function createComponentManager({ root, storage, source, runtime } = {}) 
           completed += bytes.length;
           emit(completed, file.path);
         }
-        await storage.writeJson(joinPath(stage, 'manifest.json'), manifest);
+        await storage.writeBytes(joinPath(stage, 'manifest.json'), signed.bytes);
+        await storage.writeJson(joinPath(stage, 'manifest.json.sig.json'), signed.envelope);
         token.throwIfCancelled();
         await storage.mkdir(joinPath(root, expected.id));
         // Adapter must refuse to replace an existing version. Publish only complete directories.
@@ -97,7 +109,10 @@ export function createComponentManager({ root, storage, source, runtime } = {}) 
   return {
     root, inspect, ensure,
     async load(requirement, { context = {}, token = createCancellationToken(), ...options } = {}) {
-      const installed = await ensure(requirement, { ...options, token });
+      await ensure(requirement, { ...options, token });
+      // Re-read disk after publishing, immediately before the host module loader is invoked.
+      const installed = await inspect(requirement, token);
+      if (!installed) fail('CORRUPT_INSTALL', '组件在加载前消失');
       token.throwIfCancelled();
       let instance;
       try {
@@ -129,7 +144,11 @@ export function createComponentManager({ root, storage, source, runtime } = {}) 
     },
     async checkUpdate(requirement, { token = createCancellationToken() } = {}) {
       const expected = validateRequirement(requirement);
-      const latest = await source.latest(expected.id, token);
+      const verified = await trust.verify(await source.catalog(token), { purpose: 'catalog', token });
+      const records = validateCatalog(verified.value, source.repository).components.filter((item) => item.id === expected.id);
+      if (!records.length) fail('COMPONENT_NOT_FOUND', '签名目录中没有此组件');
+      records.sort((left, right) => compareVersions(right.version, left.version));
+      const latest = records[0].version;
       token.throwIfCancelled();
       return { id: expected.id, current: expected.version, latest, available: compareVersions(latest, expected.version) > 0 };
     },

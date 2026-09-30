@@ -2,22 +2,26 @@ import { createInterface } from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 import { createComponentManager, createGitHubSource } from '@falcon-components/loader';
 import { createComponentSession } from '@falcon-components/ui';
-import { createNodeStorage, createNodeTransport, createNodeRuntime } from '@falcon-components/node-adapter';
+import { createNodeStorage, createNodeTransport, createNodeRuntime, createNodeSignatureVerifier } from '@falcon-components/node-adapter';
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 const argument = (name, fallback) => {
   const index = process.argv.indexOf(name);
   return index >= 0 ? process.argv[index + 1] : fallback;
 };
-const storage = createNodeStorage({ root: argument('--root', resolve(project, '.demo-device/components')) });
+// Trust belongs to this host checkout, never to the shared component directory.
+const trustedKey = JSON.parse(await readFile(resolve(project, 'trust/release-public-key.json'), 'utf8'));
+const trust = createNodeSignatureVerifier({ trustedKeys: [trustedKey] });
+const storage = createNodeStorage({ root: argument('--root', resolve(project, '.demo-device/signed-components')) });
 const transport = process.argv.includes('--offline')
   ? { async getText() { throw new Error('Offline demo blocks network access'); }, async getBytes() { throw new Error('Offline demo blocks network access'); } }
   : createNodeTransport();
 const manager = createComponentManager({
-  root: storage.root, storage,
-  source: createGitHubSource({ transport, ref: argument('--ref', 'main') }),
+  root: storage.root, storage, trust,
+  source: createGitHubSource({ transport, trust, release: argument('--release', 'latest') }),
   runtime: createNodeRuntime(),
 });
 const session = createComponentSession({ manager, requirement: { id: 'hello', version: '0.1.0', name: 'Hello 示例组件' }, context: { name: '开源组件使用者' } });

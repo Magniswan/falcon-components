@@ -6,22 +6,27 @@ import { createServer } from 'node:http';
 import { createGitHubSource } from '@falcon-components/loader';
 import { createCancellationToken } from '@falcon-components/core';
 import { createNodeTransport } from '@falcon-components/node-adapter';
-import { createFixture, requirement } from '../test-support/helpers.js';
+import { createFixture, requirement, createTestSigner } from '../test-support/helpers.js';
 
-test('GitHub source builds raw URLs for a pinned ref and rejects unsafe configuration', async (t) => {
+test('GitHub source verifies a Release catalog and pins component files to its signed commit', async (t) => {
   const fixture = await createFixture(t);
   await fixture.source.resolve(requirement, createCancellationToken());
-  assert.ok(fixture.calls.every((url) => url.startsWith('https://raw.githubusercontent.com/Magniswan/falcon-components/main/')));
-  for (const options of [{ repository: '../x' }, { ref: '../main' }, { catalogPath: '/catalog.json' }]) {
-    assert.throws(() => createGitHubSource({ transport: { getText() {}, getBytes() {} }, ...options }));
+  const resolved = await fixture.source.resolve(requirement, createCancellationToken());
+  await resolved.download(resolved.manifest.files[0], { token: createCancellationToken(), onProgress() {} });
+  assert.ok(fixture.calls[0].includes('/releases/latest/download/component-catalog.sig.json'));
+  assert.ok(fixture.calls.at(-1).startsWith(`https://raw.githubusercontent.com/Magniswan/falcon-components/${'a'.repeat(40)}/`));
+  for (const options of [{ repository: '../x' }, { ref: '../main' }, { catalogPath: '/catalog.json' }, { release: '../v1' }]) {
+    assert.throws(() => createGitHubSource({ transport: { getText() {}, getBytes() {} }, trust: fixture.trust, ...options }));
   }
 });
 
-test('GitHub source rejects a duplicate catalog and a missing exact version', async () => {
-  const source = createGitHubSource({ transport: { async getText() { return JSON.stringify({ schemaVersion: 1, components: [] }); }, async getBytes() {} } });
+test('GitHub source rejects a duplicate signed catalog and a missing exact version', async () => {
+  const signer = createTestSigner();
+  const index = { schemaVersion: 1, repository: 'Magniswan/falcon-components', ref: 'a'.repeat(40), components: [] };
+  const source = createGitHubSource({ trust: signer.trust, transport: { async getText() { return JSON.stringify(signer.sign(index, 'catalog')); }, async getBytes() {} } });
   await assert.rejects(source.resolve(requirement, createCancellationToken()), { code: 'COMPONENT_NOT_FOUND' });
-  const item = { id: 'hello', version: '0.1.0', manifest: 'catalog/manifest.json' };
-  const duplicate = createGitHubSource({ transport: { async getText() { return JSON.stringify({ schemaVersion: 1, components: [item, item] }); }, async getBytes() {} } });
+  const item = { id: 'hello', version: '0.1.0', manifest: 'catalog/manifest.json', manifestSha256: 'b'.repeat(64) };
+  const duplicate = createGitHubSource({ trust: signer.trust, transport: { async getText() { return JSON.stringify(signer.sign({ ...index, components: [item, item] }, 'catalog')); }, async getBytes() {} } });
   await assert.rejects(duplicate.latest('hello', createCancellationToken()), { code: 'INVALID_MANIFEST' });
 });
 

@@ -37,7 +37,7 @@ test('downloads once, validates files, atomically installs and then works offlin
 
 test('two application managers serialize installation and reuse the same version', async (t) => {
   const fixture = await createFixture(t, { download: async (bytes) => { await new Promise((accept) => setTimeout(accept, 40)); return bytes; } });
-  const second = createComponentManager({ root: fixture.storage.root, storage: fixture.storage, source: fixture.source, runtime: fixture.runtime });
+  const second = createComponentManager({ root: fixture.storage.root, storage: fixture.storage, source: fixture.source, runtime: fixture.runtime, trust: fixture.trust });
   const handles = await Promise.all([fixture.manager.load(requirement, { requestDownload: async () => true }), second.load(requirement, { requestDownload: async () => true })]);
   assert.equal(fixture.calls.filter((url) => url.endsWith('/hello.mjs')).length, 1);
   assert.equal(handles[0].directory, handles[1].directory);

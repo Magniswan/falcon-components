@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, lstat, readdir, realpath } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, lstat, readdir, realpath, copyFile } from 'node:fs/promises';
 import { resolve, dirname, relative, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -65,6 +65,8 @@ async function signFile(path, purpose) {
 const catalogPath = resolve(bundle, 'catalog/index.json');
 const catalog = JSON.parse(await readFile(catalogPath, 'utf8'));
 if (catalog.schemaVersion !== 1 || !Array.isArray(catalog.components)) throw new Error('Invalid release catalog');
+catalog.repository = 'Magniswan/falcon-components';
+catalog.ref = commit;
 for (const item of catalog.components) {
   validateRelativePath(item.manifest);
   const manifestPath = resolve(bundle, item.manifest);
@@ -74,9 +76,11 @@ for (const item of catalog.components) {
     if (bytes.length !== file.size || sha256(bytes) !== file.sha256) throw new Error('Release component hash mismatch');
   }
   item.manifestSha256 = await signFile(item.manifest, 'component-manifest');
+  item.signature = JSON.parse(await readFile(`${manifestPath}.sig.json`, 'utf8'));
 }
 await writeFile(catalogPath, jsonBytes(catalog));
 await signFile('catalog/index.json', 'catalog');
+await copyFile(resolve(bundle, 'catalog/index.json.sig.json'), resolve(output, 'component-catalog.sig.json'));
 const files = [];
 for (const path of await walk(bundle)) {
   const bytes = await readFile(resolve(bundle, path));
@@ -93,6 +97,10 @@ await writeFile(resolve(output, `${archiveName}.sig.json`), jsonBytes(signPayloa
   archive: { path: archiveName, size: archiveBytes.length, sha256: sha256(archiveBytes) },
 }), { privateKeyPem, trustedKey, purpose: 'release' })), { flag: 'wx' });
 await writeFile(resolve(output, 'SHA256SUMS'), `${sha256(archiveBytes)}  ${archiveName}\n`);
-if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `directory=${output}\narchive=${archiveName}\nversion=${pkg.version}\n`, { flag: 'a' });
+const changelog = await readFile(resolve(bundle, 'CHANGELOG.md'), 'utf8');
+const notes = changelog.split('\n## ').find((section) => section.startsWith(`${pkg.version} - `));
+if (!notes || !notes.trim()) throw new Error('Release notes missing from CHANGELOG.md');
+await writeFile(resolve(output, 'release-notes.md'), `## ${notes.trim()}\n\nSource commit: ${commit}\n`);
+if (process.env.GITHUB_OUTPUT) await writeFile(process.env.GITHUB_OUTPUT, `directory=${output}\narchive=${archiveName}\nversion=${pkg.version}\ncommit=${commit}\n`, { flag: 'a' });
 console.log(`Signed release built: ${tag}, commit ${commit}, key ${trustedKey.keyId}`);
 console.log(`Output: ${output}`);

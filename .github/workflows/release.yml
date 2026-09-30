@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       version: ${{ steps.sign.outputs.version }}
+      commit: ${{ steps.sign.outputs.commit }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
@@ -44,6 +45,7 @@ jobs:
         run: |
           node scripts/verify-archive.mjs "$RELEASE_DIRECTORY/${{ steps.sign.outputs.archive }}"
           node scripts/verify-release.mjs "$RELEASE_DIRECTORY/bundle"
+          node scripts/check-signed-host.mjs "$RELEASE_DIRECTORY/bundle"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: signed-release
@@ -52,6 +54,8 @@ jobs:
             ${{ steps.sign.outputs.directory }}/falcon-components-*.tar.gz
             ${{ steps.sign.outputs.directory }}/falcon-components-*.tar.gz.sig.json
             ${{ steps.sign.outputs.directory }}/SHA256SUMS
+            ${{ steps.sign.outputs.directory }}/component-catalog.sig.json
+            ${{ steps.sign.outputs.directory }}/release-notes.md
           retention-days: 30
 
   publish:
@@ -71,11 +75,10 @@ jobs:
           RELEASE_TAG: ${{ github.ref_name }}
           RELEASE_VERSION: ${{ needs.build.outputs.version }}
           RELEASE_RUN_ID: ${{ github.run_id }}
-          RELEASE_COMMIT: ${{ github.sha }}
+          RELEASE_COMMIT: ${{ needs.build.outputs.commit }}
         shell: bash
         run: |
           set -euo pipefail
           test "$RELEASE_TAG" = "v$RELEASE_VERSION"
           gh run download "$RELEASE_RUN_ID" --repo "$GH_REPO" --name signed-release --dir release
-          printf 'Signed Falcon component framework %s.\n\nSource commit: %s\n\nSee docs/signing.md for public-key verification. Falcon device-side signature verification remains an integration requirement.\n' "$RELEASE_VERSION" "$RELEASE_COMMIT" > release-notes.md
-          gh release create "$RELEASE_TAG" --repo "$GH_REPO" --verify-tag --title "$RELEASE_TAG" --notes-file release-notes.md release/*
+          gh release create "$RELEASE_TAG" --repo "$GH_REPO" --verify-tag --title "$RELEASE_TAG" --notes-file release/release-notes.md release/falcon-components-*.tar.gz release/falcon-components-*.tar.gz.sig.json release/SHA256SUMS release/component-catalog.sig.json

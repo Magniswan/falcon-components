@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.2.0 - 2026-09-30
+
+### Breaking changes
+
+- Require host-owned trust configuration in both the source and component manager; reject unsigned installs instead of falling back to 0.1 behavior.
+- Replace plain raw-file source ref/catalogPath options with signed GitHub Release catalogs and a release selector.
+- Preserve original signed manifest bytes and a reserved manifest.json.sig.json alongside installed files.
+
+### Signature enforcement
+
+- Verify Ed25519 envelopes with pinned SPKI public keys, strict Base64/UTF-8 decoding, purpose separation and host crypto adapters.
+- Bind repository identity, source commit, catalog records, component versions and manifest SHA-256 before payload downloads.
+- Independently verify custom-source metadata in the manager; recheck installed signatures and file hashes before runtime imports and during offline use.
+- Add signature refusal messages, cancellation checks, tamper tests, signed Release host smoke tests and updated Node/Falcon examples.
+- Keep valid older signed versions usable; no anti-rollback, expiration, highest-version tracking or device binding.
+
+### Distribution and integration
+
+- Publish component-catalog.sig.json as a small standalone Release asset so devices can install a single component without downloading the whole repository.
+- Document host crypto contracts, public-key ownership, migration from unsigned installs and remaining Falcon native/hardware validation.
+- Runtime packages advance to 0.2.0; Hello remains 0.1.0 and keyboard remains unimplemented.
+
 ## 0.1.1 - 2026-09-30
 
 ### Signing and automation

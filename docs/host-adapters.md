@@ -1,6 +1,22 @@
-# 宿主适配契约 v1
+# 宿主适配契约 0.2.0
 
 `core`、`loader` 和 UI 会话不使用 Node、浏览器 DOM、fetch、AbortController 或全局文件 API。以下接口由宿主注入；当前提供 [Node 参考实现](../packages/node-adapter/src/index.js)，Falcon 项目应使用目标设备已验证的 JSAPI 或 native 桥接实现。
+
+## crypto 与宿主信任
+
+```js
+const crypto = {
+  async sha256(bytes) { /* Uint8Array -> 小写 SHA-256 十六进制字符串 */ },
+  async verifyEd25519(publicKey, message, signature) {
+    // publicKey: 32 字节原始公钥，message: 完整消息字节，signature: 64 字节签名
+    // 调用目标设备已验证的密码库；成功仅返回 true，其他结果拒绝
+  },
+};
+```
+
+框架不自行实现 Ed25519 算法。宿主使用成熟密码库或原生 JSAPI，验签覆盖传入的原始 message 字节，不做额外预哈希；算法是普通 Ed25519，不是 Ed25519ph。接口允许 Promise，异常会停止操作，异步晚到结果也必须经过取消检查。
+
+公钥 JSON 随宿主构建，实例化 createSignatureVerifier 时固定；核心会检查 Ed25519 SPKI DER 结构与 SHA-256 keyId。设备目录、网络响应、签名 envelope 都不能新增公钥。Node 参考实现提供 createNodeCrypto 和 createNodeSignatureVerifier；Falcon 模板在 crypto 能力缺失时直接失败，不能临时返回 true 或跳过检查。
 
 ## storage
 
@@ -21,6 +37,8 @@
 仅使用 JavaScript Map 不满足跨应用锁契约。Node 参考实现使用原子 mkdir 锁；设备桥接可使用进程退出自动释放的文件锁。目录锁在进程崩溃后可能残留，应核对 owner 和存活进程后清理，不能看到锁就自动删除。
 
 拒绝越过根目录、符号链接重定向和覆盖已安装版本。持久化介质需要断电可靠性时，在发布前同步文件与目录；当前 Node 演示只验证进程内原子可见性，不宣称断电持久化。
+
+原始清单以 writeBytes 保存，签名 envelope 以 writeJson 保存。readJson 对签名文件应支持 384 KiB 上限；原始签名 payload 上限 256 KiB。readBytes 不得转换换行或重新编码文本，否则与签名原始字节不一致。
 
 ## transport
 
@@ -58,3 +76,7 @@ const runtime = {
 先用 Hello 的普通 ESM 路径测试包外加载。若目标运行时只接受字节码，应生成该 profile 的独立组件/版本及匹配清单，不能仅修改扩展名。当前 Hello 源码示例没有字节码分发产物。
 
 记录型号、固件、Falcon、QuickJS、逻辑屏幕尺寸、文件路径、HTTPS/重定向结果、模块加载日志、前后台和重复进入退出行为。框架入口与下载提示随 AMR 打包，远程组件按版本装到公共目录。
+
+## 文件变化边界
+
+load 在原子安装后再次验签与检查磁盘，成功后才调用 importModule；验签逻辑和宿主本身属于可信应用范围。宿主加载器应保证读取的模块与刚检查的文件一致，避免其他进程在检查与执行之间替换入口；需要更强保证时由宿主实现只读快照或基于已验证字节的加载。当前 Node 参考实现使用文件路径 import，不能把它称为对抗持续 root 写入的隔离机制。
