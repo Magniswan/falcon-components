@@ -30,7 +30,7 @@ export default {
   mounted() {
     console.warn('[keyboard-demo] ready ' + JSON.stringify(this.profile));
     if (this.diagnostics) this.unsubscribe = this.keyboard.subscribe((state) => {
-      console.warn('[keyboard-demo] state ' + JSON.stringify({ visible: state.visible, mode: state.mode, layout: state.layout, text: state.text, composition: state.composition, candidates: state.candidates.slice(0, 6).map((item) => item.text) }));
+      console.warn('[keyboard-demo] state ' + JSON.stringify({ visible: state.visible, mode: state.mode, layout: state.layout, text: state.text, composition: state.composition, bounds: state.bounds, keys: state.keys, candidates: state.candidates.slice(0, 4).map((item) => item.text) }));
     });
     this.open();
   },
@@ -40,9 +40,9 @@ export default {
     async open(presentation = 'bottom-overlay') {
       if (this.released) return;
       const floating = presentation === 'floating';
-      const width = floating ? Math.max(300, this.profile.width - 180) : this.profile.width;
-      const height = Math.min(this.profile.height, floating ? 226 : 266);
-      const bounds = { x: floating ? 90 : 0, y: this.profile.height - height, width, height };
+      const width = Math.min(this.profile.width, 560);
+      const height = Math.min(this.profile.height, 178);
+      const bounds = { x: Math.round((this.profile.width - width) / 2), y: Math.max(0, this.profile.height - height - (floating ? 12 : 0)), width, height };
       console.warn('[keyboard-demo] open ' + presentation);
       const result = await this.keyboard.open({ value: this.value, mode: 'pinyin', layout: 't9', presentation, bounds, multiline: true });
       if (this.released) return;
@@ -58,10 +58,10 @@ export default {
 };
 </script>
 <style>
-.demo { background-color: #eef4f8; }
-.title { position: absolute; top: 6px; left: 10px; font-size: 19px; color: #172c42; }
-.result { position: absolute; top: 42px; left: 10px; font-size: 18px; color: #376781; }
-.open { position: absolute; right: 12px; top: 4px; width: 110px; height: 30px; background-color: #087c91; border-radius: 5px; align-items: center; justify-content: center; }
-.floating { position: absolute; right: 130px; top: 4px; width: 70px; height: 30px; background-color: #376781; border-radius: 5px; align-items: center; justify-content: center; }
+.demo { background-color: #f9faf7; }
+.title { position: absolute; top: 6px; left: 10px; font-size: 19px; color: #313b35; }
+.result { position: absolute; top: 42px; left: 10px; font-size: 18px; color: #768178; }
+.open { position: absolute; right: 12px; top: 4px; width: 110px; height: 30px; background-color: #47785a; border-radius: 5px; align-items: center; justify-content: center; }
+.floating { position: absolute; right: 130px; top: 4px; width: 70px; height: 30px; background-color: #768178; border-radius: 5px; align-items: center; justify-content: center; }
 .open-text { font-size: 16px; color: #ffffff; }
 </style>

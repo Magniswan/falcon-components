@@ -22,7 +22,7 @@ if (result.confirmed) saveText(result.text);
 // 隐藏/切页时 keyboard.cancel()；卸载时 keyboard.dispose()。
 ```
 
-接入 Falcon 构建工具时，可以直接使用相对源码路径，或配置 alias 指向上述入口。宿主需提供足够的矩形区域（至少 240 × 190 逻辑像素；较窄屏幕建议九宫格），并把 Panel 放入覆盖目标区域的父容器。组件不读取全局屏幕、不选择 AppID，也不调用系统输入法。
+接入 Falcon 构建工具时，可以直接使用相对源码路径，或配置 alias 指向上述入口。宿主需提供足够的矩形区域（至少 300 × 170 逻辑像素；较窄屏幕建议九宫格），并把 Panel 放入覆盖目标区域的父容器。组件不读取全局屏幕、不选择 AppID，也不调用系统输入法。
 
 完整示例及独立 AMR 构建方法见 [keyboard-demo](../../examples/keyboard-demo/README.md)。
 
@@ -38,7 +38,7 @@ if (result.confirmed) saveText(result.text);
 | press(value) | 逻辑输入或功能键；Panel 已连接触控 |
 | setMode(mode) | pinyin / english / number / symbol；清空未选词组合 |
 | setLayout(layout) | t9 / qwerty；布局变更清空组合 |
-| select(index) / page(direction, count) | 选候选/翻页；Panel 自动按宽度显示 3 或 6 个 |
+| select(index) / page(direction, count) | 选候选/翻页；Panel 自动按宽度显示 2 或 4 个 |
 | touchStart / touchMove / touchEnd / touchCancel | 注入归一化、相对 Panel 的 { x, y, id } |
 | outside() | 宿主在键盘外调用，返回 interact / block / dismiss，dismiss 取消 |
 
@@ -47,6 +47,8 @@ open 还接受 `maxLength`（默认 4096 个受支持的字符簇）、`outsideA
 默认编辑器处理代理对、常见组合音标、emoji 修饰符、ZWJ 和旗帜；不宣称实现完整 UAX #29 语言分段。
 
 ## 显示与触控
+
+紧凑 Panel 将模式切换、布局切换和收起放在草稿顶栏，候选栏独立，按键区保留四行。示例在 960 × 266 profile 使用居中的 560 × 178 矩形，占屏面积约 39%；组件仍完全采用宿主传入的 bounds，建议 26 键使用至少 500px 宽，以保留横向触控面积。
 
 - bottom-overlay/floating 都使用宿主矩形内的 Falcon Vue UI；floating 第一版不支持拖动。
 - inset 通过 onInset(bounds/null) 报告占用区域，由宿主调整其他内容。

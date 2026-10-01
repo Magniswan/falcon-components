@@ -2,14 +2,13 @@ const qwerty = ['qwertyuiop', 'asdfghjkl', 'zxcvbnm'];
 const t9 = [['2 ABC', '3 DEF', '4 GHI'], ['5 JKL', '6 MNO', '7 PQRS'], ['8 TUV', '9 WXYZ', "'"]];
 const symbols = [['，', '。', '？', '！', '：', '；', '（', '）', '、', '…'], ['@', '#', '$', '%', '&', '*', '-', '+', '=', '_'], ['/', '\\', '[', ']', '{', '}', '"', "'", '<', '>']];
 export function createLayout({ width, height, mode, layout, shift }) {
-  const compact = height < 220;
-  const header = compact ? 28 : 34;
-  const candidateHeight = compact ? 28 : 34;
-  const toolbarHeight = compact ? 26 : 30;
+  const header = 26;
+  const candidateHeight = 28;
+  const toolbarHeight = 0;
   const keyTop = header + candidateHeight + toolbarHeight;
   const gap = 4;
   const rowHeight = (height - keyTop - 5 * gap) / 4;
-  if (width < 240 || rowHeight < 22) throw new RangeError('Keyboard bounds are too small; host must provide at least 240 x 190');
+  if (width < 300 || rowHeight < 24) throw new RangeError('Keyboard bounds are too small; host must provide at least 300 x 170');
   let rows;
   if (mode === 'symbol') rows = symbols;
   else if (mode === 'number') rows = [['1', '2', '3'], ['4', '5', '6'], ['7', '8', '9']];

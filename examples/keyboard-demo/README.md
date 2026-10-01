@@ -1,6 +1,6 @@
 # 可安装的独立键盘示例
 
-[KeyboardDemo.vue](KeyboardDemo.vue) 展示宿主确认/取消、重复打开、底部覆盖和悬浮。逻辑尺寸通过 profile 传入。文本诊断默认关闭；只有测试构建显式设置 FALCON_DEMO_DIAGNOSTICS=1 时输出测试文本与状态。
+[KeyboardDemo.vue](KeyboardDemo.vue) 展示宿主确认/取消、重复打开、底部覆盖和悬浮。逻辑尺寸通过 profile 传入。默认采用居中的紧凑矩形（宽度上限 560、高度上限 178），悬浮模式上移 12px；宿主需提供至少 300 × 170 的空间，窄屏优先九宫格。文本诊断默认关闭；只有测试构建显式设置 FALCON_DEMO_DIAGNOSTICS=1 时输出测试文本与状态。
 
 ## 引入已有应用
 
@@ -33,7 +33,7 @@ ADB 鉴权由设备所有者完成，不需要重启设备。选择真实设备�
 
 这版固件的实际启动语法是 `start AppID index`，不要传 `--page index` 或 `--index`。install/start 返回 0 还不够，需要看到界面并完成输入/确认/取消。
 
-已验证的 960 × 266 RK3562 profile 可运行 [设备行为验收脚本](../../scripts/test-keyboard-device.mjs)。测试构建需 FALCON_DEMO_DIAGNOSTICS=1，环境另需 FALCON_LOG_PATH 和实测触控偏移 FALCON_TOUCH_X_OFFSET。脚本只读取已知日志，使用 send_event 模拟触屏，并将结果保存在忽略的 artifacts/。脚本有固定验收坐标，其他设备需重新校准，不是通用触控驱动。
+已验证的 960 × 266 RK3562 profile 可运行 [设备行为验收脚本](../../scripts/test-keyboard-device.mjs)。测试构建需 FALCON_DEMO_DIAGNOSTICS=1，环境另需 FALCON_LOG_PATH 和实测触控偏移 FALCON_TOUCH_X_OFFSET。脚本只读取已知日志，使用 send_event 模拟触屏，并将结果保存在忽略的 artifacts/。脚本从状态诊断读取键盘按键和 bounds，再计算点按位置；宿主按钮位置和硬件坐标映射属于该验收 profile，其他设备需重新校准，不是通用触控驱动。
 
 普通 miniapp capture 在该 profile 上出现条纹。可用目标 sysroot 编译 [device-probe.c](../../scripts/device-probe.c)，推入 `/tmp/falcon-component-device-probe` 后运行 [DRM 截图脚本](../../scripts/capture-keyboard-device.mjs)；截图脚本会读取当前 miniapp framebuffer ID，不复用双缓冲的旧 ID。它需要配置 PYTHON_PATH（含 Pillow）和 FALCON_DRM_CROP_Y，截图只做读映射，不修改 DRM 显示配置。
 
